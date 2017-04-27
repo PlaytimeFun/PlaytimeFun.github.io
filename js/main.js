@@ -24,13 +24,6 @@ var dino;                   // The dino mesh
 var dinoVelocity = new BABYLON.Vector3(0, 0, 0); // The direction to apply the movement velocity of dino
 
 
-var headset;
-// If a VR headset is connected, get its info
-navigator.getVRDisplays().then(function(displays) {
-  if(displays[0]) {
-      headset = displays[0];;
-  }
-});
 
 
 window.addEventListener('DOMContentLoaded', function () {
