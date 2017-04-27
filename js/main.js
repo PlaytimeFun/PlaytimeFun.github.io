@@ -55,7 +55,8 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
         // Create a WebVR camera with the trackPosition property set to false so that we can control movement with the gamepad
-        var camera = new BABYLON.UniversalCamera("Camera", new BABYLON.Vector3(0, 18, -45), scene);
+        camera = new BABYLON.WebVRFreeCamera("camera1", new BABYLON.Vector3(0, 14, 0), scene, true, { trackPosition: false });
+
         //camera.deviceScaleFactor = 1;
 
 
