@@ -64,7 +64,12 @@ window.addEventListener('DOMContentLoaded', function () {
         camera.ellipsoid = new BABYLON.Vector3(1, 9, 1);
         camera.applyGravity = true;
 
-camera.attachControl(canvas, true); 
+scene.onPointerDown = function () {
+            scene.onPointerDown = undefined
+            camera.attachControl(canvas, true);
+        }
+
+
 
 
         // Create the instructionx display box
