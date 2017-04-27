@@ -63,12 +63,6 @@ window.addEventListener('DOMContentLoaded', function () {
         camera.ellipsoid = new BABYLON.Vector3(1, 9, 1);
         camera.applyGravity = true;
 
-        // attach the camera to the canvas once the user clicks the window. Needed to activate webvr/headset connection
-        scene.onPointerDown = function () {
-            scene.onPointerDown = undefined
-            camera.attachControl(canvas, true);
-        }
-
 
 
 
