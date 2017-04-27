@@ -35,33 +35,6 @@ navigator.getVRDisplays().then(function(displays) {
 
 window.addEventListener('DOMContentLoaded', function () {
 
-    // Connects an xbox controller has been plugged in and and a button/trigger moved,
-    function onNewGamepadConnected(gamepad) {
-        var xboxpad = gamepad
-
-        xboxpad.onbuttondown(function (buttonValue) {
-            // When the A button is pressed, either start or reload the game depending on the game state
-            if (buttonValue == BABYLON.Xbox360Button.A) {
-
-                // Game is over, reload it
-                if (gameOver) {
-                    location.reload();
-                }
-                // Game has begun
-                else {
-                    // Remove instructions box
-                    instructBox.dispose();
-                    begin = true;
-                    // Start looping the dino walking animation
-                    scene.beginAnimation(dino.skeleton, 111, 130, true, 1);
-                }
-            }
-        });
-    }
-
-    // Get all connected gamepads
-    var gamepads = new BABYLON.Gamepads(function (gamepad) { onNewGamepadConnected(gamepad); });
-
 
     // Grab where we'll be displayed the game
     var canvas = document.getElementById('renderCanvas');
@@ -109,11 +82,9 @@ window.addEventListener('DOMContentLoaded', function () {
         camera.ellipsoid = new BABYLON.Vector3(1, 9, 1);
         camera.applyGravity = true;
 
-        // attach the camera to the canvas once the user clicks the window. Needed to activate webvr/headset connection
-        scene.onPointerDown = function () {
-            scene.onPointerDown = undefined
+
             camera.attachControl(canvas, true);
-        }
+
 
         // Custom input, adding xbox controller support for left analog stick to map to keyboard arrows
         camera.inputs.attached.keyboard.keysUp.push(211);
@@ -326,20 +297,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
         engine.runRenderLoop(function () {
             // Determine which camera should be showing depending on whether or not the headset is presenting
-            if(headset) {
-                if(!(headset.isPresenting)) {
-                      var camera2 = new BABYLON.VRDeviceOrientationFreeCamera("vrcam", new BABYLON.Vector3(0, 18, -45), scene);
-                      scene.activeCamera = camera2;
-                              var a = createNewWSC(scene);
-        a.worldSpaceCanvasNode.parent  = camera2;
-        a.worldSpaceCanvasNode.position.y = camera2.position.y;
-        a.worldSpaceCanvasNode.position.x = camera2.position.x + 5;
-        a.worldSpaceCanvasNode.position.z = camera2.position.z + 5;
-        a.worldSpaceCanvasNode.material.backFaceCulling = false;
-                } else {
-                    scene.activeCamera = camera;
-                }
-            }
+
 
             scene.render();
 
