@@ -87,8 +87,8 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
         // Create a WebVR camera with the trackPosition property set to false so that we can control movement with the gamepad
-        camera = new BABYLON.WebVRFreeCamera("camera1", new BABYLON.Vector3(0, 14, 0), scene, true, { trackPosition: false });
-        camera.deviceScaleFactor = 1;
+        var camera = new BABYLON.UniversalCamera("Camera", new BABYLON.Vector3(0, 18, -45), scene);
+        //camera.deviceScaleFactor = 1;
 
 
         // Set the ellipsoid around the camera. This will act as the collider box for when the player runs into walls
@@ -304,10 +304,9 @@ window.addEventListener('DOMContentLoaded', function () {
             // Determine which camera should be showing depending on whether or not the headset is presenting
             if(headset) {
                 if(!(headset.isPresenting)) {
-                      var camera2 = new BABYLON.UniversalCamera("Camera", new BABYLON.Vector3(0, 18, -45), scene);
-                      scene.activeCamera = camera2;
+                      
                 } else {
-                    scene.activeCamera = camera;
+
                 }
             }
 
