@@ -55,9 +55,15 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
         // Create a WebVR camera with the trackPosition property set to false so that we can control movement with the gamepad
+        
+    if (navigator.getVRDisplays) {
         camera = new BABYLON.WebVRFreeCamera("camera1", new BABYLON.Vector3(0, 14, 0), scene, true, { trackPosition: false });
 
-        //camera.deviceScaleFactor = 1;
+        camera.deviceScaleFactor = 1;
+    }
+    else {
+        camera = new BABYLON.VRDeviceOrientationFreeCamera("vrCam", new BABYLON.Vector3(0, 1, 0), scene);
+    }
 
 
         // Set the ellipsoid around the camera. This will act as the collider box for when the player runs into walls
