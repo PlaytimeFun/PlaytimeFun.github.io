@@ -1,665 +1,452 @@
-var collisionCount = 0;
-var clock;
-var dino;
-var stats;
-var loader = new THREE.JSONLoader();
-var camera, controls, scene, renderer;
-var mapSize;
-var UNITWIDTH = 90;
-var UNITHEIGHT = 45;
-var CATCHOFFSET = 120;
-var DINOCOLLISIONDISTANCE = 55;
-var PLAYERCOLLISIONDISTANCE = 20;
-var DINOSCALE = 20;
-var collidableObjects = [];
-var position = new THREE.Vector3();
-var totalCubesWide;
+var UNITWIDTH = 90;         // Width of the cubes in the maze
+var UNITHEIGHT = 45;        // Height of the cubes in the maze
+var CATCHOFFSET = 150;      // How close dino can get before game over
+var CHASERANGE = 200;       // How close dino can get before tirggering the chase
+var DINOSCALE = 20;         // How much to multiple the size of the dino by
+var DINOSPEED = 1600;       // How fast the dino will move
 
-var controlsEnabled = false;
+var DINORAYLENGTH = 55;     // How close dino can get to collidable objects
+var ROARDIVISOR = 250;      // How many frames to wait between roar animations (Once game over)
 
-var moveForward = false;
-var moveBackward = false;
-var moveLeft = false;
-var moveRight = false;
+var instructBox;            // Textured box that displays the game instructions
 
-var gameOver = false;
+// Game states
+var begin = false;          // Flag to determine whether the game should begin
+var gameOver = false;       // Flag to determines whether the game is over
 
-var velocity = new THREE.Vector3();
-var dinoVelocity = new THREE.Vector3();
-var objects = [];
-
-var dinoRightCollide, dinoLeftCollide;
-
-var blocker = document.getElementById('blocker');
-var instructions = document.getElementById('instructions');
-var dinoAlert = document.getElementById('dino-alert');
-var status = document.getElementById('status');
-dinoAlert.style.display = 'none';
+var scene;
+var camera;                 // The camera for the scene
+var ground;                 // The ground plane mesh
+var totalCubesWide;         // How many wall cubes can make the width of the map
+var mapSize;                // Height and width of the maze ground plane
+var collidableObjects = []; // Array holding all meshes that are collidable
+var dino;                   // The dino mesh
+var dinoVelocity = new BABYLON.Vector3(0, 0, 0); // The direction to apply the movement velocity of dino
 
 
+var headset;
+// If a VR headset is connected, get its info
+navigator.getVRDisplays().then(function(displays) {
+  if(displays[0]) {
+      headset = displays[0];;
+  }
+});
 
 
+window.addEventListener('DOMContentLoaded', function () {
 
+    // Connects an xbox controller has been plugged in and and a button/trigger moved,
+    function onNewGamepadConnected(gamepad) {
+        var xboxpad = gamepad
 
-getPointerLock();
-init();
+        xboxpad.onbuttondown(function (buttonValue) {
+            // When the A button is pressed, either start or reload the game depending on the game state
+            if (buttonValue == BABYLON.Xbox360Button.A) {
 
-
-
-// Get or release the pointer lock (mouse controls)
-// This section can tweaked to remove browser specifics, but left them in to show it doesn't matter in UWP
-function getPointerLock() {
-
-    var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
-
-    if (havePointerLock) {
-        var element = document.body;
-        var pointerlockchange = function (event) {
-            if (document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element) {
-                controlsEnabled = true;
-                controls.enabled = true;
-
-                blocker.style.display = 'none';
-
-            } else {
-                controls.enabled = false;
-
-                blocker.style.display = '-webkit-box';
-                blocker.style.display = '-moz-box';
-                blocker.style.display = 'box';
-
-                // If we lost the game and press ESC, reload the game
+                // Game is over, reload it
                 if (gameOver) {
                     location.reload();
                 }
-                instructions.style.display = '';
-
-
+                // Game has begun
+                else {
+                    // Remove instructions box
+                    instructBox.dispose();
+                    begin = true;
+                    // Start looping the dino walking animation
+                    scene.beginAnimation(dino.skeleton, 111, 130, true, 1);
+                }
             }
-
-        };
-
-        var pointerlockerror = function (event) {
-
-            instructions.style.display = '';
-
-        };
-
-        // Listen for state change events
-        document.addEventListener('pointerlockchange', pointerlockchange, false);
-        document.addEventListener('mozpointerlockchange', pointerlockchange, false);
-        document.addEventListener('webkitpointerlockchange', pointerlockchange, false);
-
-        document.addEventListener('pointerlockerror', pointerlockerror, false);
-        document.addEventListener('mozpointerlockerror', pointerlockerror, false);
-        document.addEventListener('webkitpointerlockerror', pointerlockerror, false);
-
-        instructions.addEventListener('click', function (event) {
-
-            instructions.style.display = 'none';
-
-            // Ask the app/browser to lock the pointer
-            element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
-            element.requestPointerLock();
-
-        }, false);
-
-    } else {
-        instructions.innerHTML = 'Pointer Lock API is not supported';
+        });
     }
 
-}
+    // Get all connected gamepads
+    var gamepads = new BABYLON.Gamepads(function (gamepad) { onNewGamepadConnected(gamepad); });
+
+
+    // Grab where we'll be displayed the game
+    var canvas = document.getElementById('renderCanvas');
+
+    // load the 3D engine
+    var engine = new BABYLON.Engine(canvas, true);
+
+
+    // Creates and return the scene
+    var createScene = function () {
+
+        // Create the Babylon scene
+        var scene = new BABYLON.Scene(engine);
+
+        // Apply gravity so that any Y axis movement is ignored
+        scene.gravity = new BABYLON.Vector3(0, -9.81, 0);
+
+        // Turn on fog for cool effects
+        scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
+        scene.fogDensity = 0.001;
+        scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
 
 
 
+        // Create a WebVR camera with the trackPosition property set to false so that we can control movement with the gamepad
+        camera = new BABYLON.WebVRFreeCamera("camera1", new BABYLON.Vector3(0, 14, 0), scene, true, { trackPosition: false });
+        camera.deviceScaleFactor = 1;
 
 
+        // Set the ellipsoid around the camera. This will act as the collider box for when the player runs into walls
+        camera.ellipsoid = new BABYLON.Vector3(1, 9, 1);
+        camera.applyGravity = true;
 
-
-function init() {
-    
-    
-    // Add clock to keep track of frames
-    clock = new THREE.Clock();
-    // Add some fog
-    scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
-
-    // Set render settings
-    renderer = new THREE.WebGLRenderer();
-    renderer.setClearColor(scene.fog.color);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-
-    // Render to the container
-    var container = document.getElementById('container');
-    container.appendChild(renderer.domElement);
-
-    // Set camera position and view details
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
-    camera.position.z = 0;
-    camera.position.y = 20; // Height the camera will be looking from
-    camera.position.x = 0;
-
-    // Add the camera to the controller, then add to the scene
-    controls = new THREE.PointerLockControls(camera);
-    scene.add(controls.getObject());
-
-
-
-
-    // Listen for when a key is pressed
-    // If it's a specified key, mark the direction as true since moving
-    var onKeyDown = function (event) {
-
-        switch (event.keyCode) {
-
-            case 38: // up
-            case 87: // w
-                moveForward = true;
-                break;
-
-            case 37: // left
-            case 65: // a
-                moveLeft = true;
-                break;
-
-            case 40: // down
-            case 83: // s
-                moveBackward = true;
-                break;
-
-            case 39: // right
-            case 68: // d
-                moveRight = true;
-                break;
-
-
+        // attach the camera to the canvas once the user clicks the window. Needed to activate webvr/headset connection
+        scene.onPointerDown = function () {
+            scene.onPointerDown = undefined
+            camera.attachControl(canvas, true);
         }
 
-    };
-
-    // Listen for when a key is released
-    // If it's a specified key, mark the direction as false since no longer moving
-    var onKeyUp = function (event) {
-
-        switch (event.keyCode) {
-
-            case 38: // up
-            case 87: // w
-                moveForward = false;
-                break;
-
-            case 37: // left
-            case 65: // a
-                moveLeft = false;
-                break;
-
-            case 40: // down
-            case 83: // s
-                moveBackward = false;
-                break;
-
-            case 39: // right
-            case 68: // d
-                moveRight = false;
-                break;
-
-        }
-
-    };
-
-    // Add event listeners for when movement keys are pressed and released
-    document.addEventListener('keydown', onKeyDown, false);
-    document.addEventListener('keyup', onKeyUp, false);
-
-    // Add the walls(cubes) of the maze
-    createMazeWalls();
-    // Add ground plane
-    createGround();
-    // Add boundry walls that surround the maze
-    createBoundryWalls();
+        // Custom input, adding xbox controller support for left analog stick to map to keyboard arrows
+        camera.inputs.attached.keyboard.keysUp.push(211);
+        camera.inputs.attached.keyboard.keysDown.push(212);
+        camera.inputs.attached.keyboard.keysLeft.push(214);
+        camera.inputs.attached.keyboard.keysRight.push(213);
 
 
+        // Create the instructionx display box
+        instructBox = BABYLON.MeshBuilder.CreateBox("instructbox", { height: 50, width: 80, depth: 1 }, scene);
+        instructBox.position = new BABYLON.Vector3(0,20,140);
+        // Apply the texture to the material
+        var instructMaterial = new BABYLON.StandardMaterial("instructionTexture", scene);
+        instructMaterial.specularTexture = new BABYLON.Texture("textures/instructions.png", scene);
+        instructMaterial.ambientTexture = new BABYLON.Texture("textures/instructions.png", scene);
+        // Apply the material to the mesh
+        instructBox.material = instructMaterial;
 
-    // load the dino JSON model
-    loader.load('./models/dino.json', function (geometry, materials) {
-        var dinoObject = new THREE.Mesh(geometry, new THREE.MultiMaterial(materials));
-        dinoObject.scale.set(DINOSCALE, DINOSCALE, DINOSCALE);
-        dinoObject.rotation.y = degreesToRadians(180);
-        dinoObject.position.set(30, 0, -400);
-        dinoObject.name = "dino";
-        scene.updateMatrixWorld(true);
+        // Create the skybox
+        var skybox = BABYLON.Mesh.CreateBox("skyBox", 5000.0, scene);
+        var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+        skyboxMaterial.backFaceCulling = false;
+        skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/skybox", scene);
+        skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+        skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+        skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        skyboxMaterial.disableLighting = true;
+        skybox.material = skyboxMaterial;
 
-        scene.add(dinoObject);
-        //position.setFromMatrixPosition(dino.matrixWorld);
-        dino = scene.getChildByName("dino");
-        instructions.innerHTML = "<strong>Click to Play!</strong> </br></br> W,A,S,D = move </br>Mouse = look around";
+        // return the created scene
+        return scene;
+    }
+
+	 // Listen for if the window changes sizes and adjust
+    window.addEventListener('resize', onWindowResize, false);
+    // Create the scene
+    var scene = createScene();
+
+    // Load the dinosaur model
+    BABYLON.SceneLoader.ImportMesh("Dino", "models/", "dino.babylon", scene, function (newMeshes) {
+
+        dino = newMeshes[0];
+
+        // Set the initial size and position of the dino
+        dino.scaling = new BABYLON.Vector3(DINOSCALE, DINOSCALE, DINOSCALE);
+        dino.position = new BABYLON.Vector3(500, 18, -30);
+        // Set the size of the ellips-shaped collider around dino
+        dino.ellipsoid = new BABYLON.Vector3(.5, .5, .5);
+        dino.rotation.y = degreesToRadians(90);
+
+        // Enable blending of animations (i.e. transitioning from standing to walking animation smoothly)
+        dino.skeleton.enableBlending(0.1)
+
+
+
+        // Start looping the standing animation before the game begins
+        dino.skeleton.beginAnimation("stand", true, .5);
+
+        // Run the render loop (fired every time a new frame is rendered)
         animate();
-
 
     });
 
-
-    // Add lights to the scene
-    light = new THREE.DirectionalLight(0xffffff);
-    light.position.set(1, 1, 1);
-    scene.add(light);
-
-    light = new THREE.DirectionalLight(0xffffff, .4);
-    light.position.set(1, -1, -1);
-    scene.add(light);
-
-    light = new THREE.AmbientLight(0x222222);
-    scene.add(light);
+    // Create the walls/ground
+    createMazeCubes();
+	 addLights();
+    createGround();
+    createPerimWalls();
+	 enableAndCheckCollisions();
 
 
-    // Add frames per second monitor
-    stats = new Stats();
-    container.appendChild(stats.dom);
+    // Create a maze of cubes whose postions are based off a 2D array
+    function createMazeCubes() {
+        // Maze wall mapping, assuming matrix
+        // 1's are cubes, 0's are empty space
+        var map = [
+            [0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0,],
+            [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0,],
+            [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0,],
+            [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0,],
+            [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,],
+            [1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,],
+            [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1,],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0,],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1,],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0,],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0,],
+            [1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0,],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,],
+            [1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0,],
+            [0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0,],
+            [0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0,]
+        ];
 
-    // Listen for if the window changes sizes
-    window.addEventListener('resize', onWindowResize, false);
-
-}
-
-
-// Create the maze walls using cubes that are mapped with a 2D array
-function createMazeWalls() {
-    // Maze wall mapping, assuming matrix
-    // 1's are cubes, 0's are empty space
-    var map = [
-        [0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, ],
-        [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, ],
-        [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, ],
-        [0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, ],
-        [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, ],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, ],
-        [1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, ],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, ],
-        [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, ],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, ],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, ],
-        [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, ],
-        [0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, ],
-        [1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, ],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ],
-        [1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, ],
-        [0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, ],
-        [0, 0, 1, 2, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, ]
-    ];
+        // Create wall material
+        var wallMat = new BABYLON.StandardMaterial("wallMat", scene);
+        wallMat.diffuseColor = new BABYLON.Color3.FromInts(129, 207, 224);
+        wallMat.specularColor = new BABYLON.Color3.FromInts(70, 70, 70);
+        wallMat.ambientColor = new BABYLON.Color3.FromInts(70, 70, 70);
 
 
-    // wall details
-    var wallGeo = new THREE.BoxGeometry(UNITWIDTH, UNITHEIGHT, UNITWIDTH);
-    var wallMat = new THREE.MeshPhongMaterial({ color: 0x81cfe0, shading: THREE.FlatShading });
+        // Keep cubes within boundry walls
+        var widthOffset = UNITWIDTH / 2;
+        // Put the bottom of the cube at y = 0
+        var heightOffset = UNITHEIGHT / 2;
 
-    // Used to keep cubes within boundry walls
-    widthOffset = UNITWIDTH / 2;
-    // Used to set cube on top of the place since a cube's position is at its center
-    heightOffset = UNITHEIGHT / 2;
+        // See how wide the map is by checking how long the first array is
+        totalCubesWide = map[0].length;
 
-    totalCubesWide = map[0].length;
+        // Place cubes where 1`s are
+        for (var i = 0; i < totalCubesWide; i++) {
+            for (var j = 0; j < map[i].length; j++) {
+                // If a 1 is found, add a cube at the corresponding position
+                if (map[i][j]) {
+                    // Make the cube
+                    var cube = BABYLON.MeshBuilder.CreateBox("cube", { height: UNITHEIGHT, width: UNITWIDTH, depth: UNITWIDTH }, scene);
+                    cube.material = wallMat;
+                    // Set the cube position
+                    cube.position.z = (i - totalCubesWide / 2) * UNITWIDTH + widthOffset;
+                    cube.position.y = heightOffset;
+                    cube.position.x = (j - totalCubesWide / 2) * UNITWIDTH + widthOffset;
 
-    // Place walls where `1`s are
-    for (var i = 0; i < totalCubesWide; i++) {
-        for (var j = 0; j < map[i].length; j++) {
-            if (map[i][j]) {
-                var wall = new THREE.Mesh(wallGeo, wallMat);
-                wall.position.z = (i - totalCubesWide / 2) * UNITWIDTH + widthOffset;
-                wall.position.y = heightOffset;
-                wall.position.x = (j - totalCubesWide / 2) * UNITWIDTH + widthOffset;
-                scene.add(wall);
-                // Add cube to list of collidable objects
-                collidableObjects.push(wall);
+                    // Make the cube collidable
+                    collidableObjects.push(cube);
+
+                }
             }
         }
+        // Set what the size of the ground should be based on the map size the matrix/cube size produced
+        mapSize = totalCubesWide * UNITWIDTH;
     }
-}
 
-// Create the ground plane that the maze sits on top of
-function createGround() {
-    // Create the ground based on the map size the matrix/cube size produced
-    mapSize = totalCubesWide * UNITWIDTH;
-    // ground
-    var groundGeo = new THREE.PlaneGeometry(mapSize, mapSize);
-    var groundMat = new THREE.MeshPhongMaterial({ color: 0xA0522D, side: THREE.DoubleSide, shading: THREE.FlatShading });
+	 // Create some lights to brighten up our scene
+	 function addLights() {
+		 var light0 = new BABYLON.PointLight('light0', new BABYLON.Vector3(1, 10, 0), scene);
+		 light0.groundColor = new BABYLON.Color3(0, 0, 0);
 
-    var ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.position.set(0, 1, 0);
-    ground.rotation.x = degreesToRadians(90);
-    scene.add(ground);
-}
+		 var light1 = new BABYLON.HemisphericLight("light2", new BABYLON.Vector3(0, 1, 0), scene);
+		 light1.diffuse = new BABYLON.Color3(.5, .5, .5);
+		 light1.specular = new BABYLON.Color3(.5, .5, .5);
+		 light1.groundColor = new BABYLON.Color3(0, 0, 0);
+	 }
+
+    // Create the ground plane that the maze sits on top of
+    function createGround() {
+        var groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+        groundMat.diffuseColor = new BABYLON.Color3.FromInts(110, 82, 45);
+
+        ground = BABYLON.Mesh.CreateGround('ground', mapSize, mapSize, 2, scene);
+        ground.material = groundMat;
+    }
 
 
-// Make the four boundry walls for the maze
-function createBoundryWalls() {
-    var halfMap = mapSize / 2;
-    var val = 1;
-    // Create all boundry walls
-    // i determines whether top/bottom or left/right walls are being created
-    for (var i = 0; i < 2; i++) {
-        // j determines which wall of the top/bottom or left/right pair is created
-        for (var j = 1; j < 3; j++) {
-            var wallGeom = new THREE.Geometry();
-            var v1, v2, v3, v4;
-            // Set vectors for top/bottom wall
-            if (i == 0) {
-                v1 = new THREE.Vector3(-(halfMap) * val, 0, -(halfMap) * val);
-                v2 = new THREE.Vector3(halfMap * val, 0, -(halfMap) * val);
-                v3 = new THREE.Vector3(halfMap * val, UNITHEIGHT, -(halfMap) * val);
-                v4 = new THREE.Vector3(-(halfMap) * val, UNITHEIGHT, -(halfMap) * val);
-                // Set vectors for left/right wall
-            } else {
-                v1 = new THREE.Vector3(-(halfMap) * val, 0, -(halfMap) * val);
-                v2 = new THREE.Vector3(-(halfMap) * val, UNITHEIGHT, -(halfMap) * val);
-                v3 = new THREE.Vector3(-(halfMap) * val, UNITHEIGHT, (halfMap) * val);
-                v4 = new THREE.Vector3(-(halfMap) * val, 0, (halfMap) * val);
-            }
+    // Make the four perimeter walls for the maze
+    function createPerimWalls() {
+        var halfMap = mapSize / 2;  // Half the size of the map
+        var sign = 1;               // Used to make an amount positive or negative
 
-            // Add verticies to the wall
-            wallGeom.vertices.push(v1);
-            wallGeom.vertices.push(v2);
-            wallGeom.vertices.push(v3);
-            wallGeom.vertices.push(v4);
+        var perimMat = new BABYLON.StandardMaterial("perimMat", scene);
+        perimMat.diffuseColor = new BABYLON.Color3.FromInts(70, 70, 70);
+        perimMat.specularColor = new BABYLON.Color3.FromInts(70, 70, 70);
+        perimMat.ambientColor = new BABYLON.Color3.FromInts(70, 70, 70);
 
-            // Create the two triangle faces that make the wall shape
-            wallGeom.faces.push(new THREE.Face3(0, 1, 2));
-            wallGeom.faces.push(new THREE.Face3(0, 3, 2));
+        // Loop through twice, making two perimeter walls at a time
+        for (var i = 0; i < 2; i++) {
+            // Make a left/right wall and a front/back wall
+            var perimWallLR = BABYLON.MeshBuilder.CreateBox("planeLR", { height: UNITHEIGHT, width: mapSize, depth: 1 }, scene);
+            var perimWallFB = BABYLON.MeshBuilder.CreateBox("planeFB", { height: UNITHEIGHT, width: mapSize, depth: 1 }, scene);
 
-            // Add the wall to the scene
-            var wall = new THREE.Mesh(wallGeom, new THREE.MeshPhongMaterial({ color: 0x464646, shading: THREE.FlatShading, side: THREE.DoubleSide }));
-            scene.add(wall);
-            // Add wall to collision detection
-            collidableObjects.push(wall);
-            val = -val;
+            // Create left/right walls
+            perimWallLR.position = new BABYLON.Vector3(-halfMap * sign, UNITHEIGHT / 2, 0);
+            perimWallLR.rotation.y = degreesToRadians(90);
+
+            // Create front/back walls
+            perimWallFB.position = new BABYLON.Vector3(0, UNITHEIGHT / 2, halfMap * sign);
+            collidableObjects.push(perimWallLR);
+            collidableObjects.push(perimWallFB);
+            sign = -1; // Swap to negative value
         }
     }
-}
 
-// Update the camera and renderer when the window changes size
-function onWindowResize() {
+	 function enableAndCheckCollisions() {
+		 // Add collision checks for the camera, ground, and walls
+		 scene.collisionsEnabled = true;
+		 camera.checkCollisions = true;
+		 ground.checkCollisions = true;
 
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+		 // Loop through all walls and make them collidable
+		 for (var i = 0; i < collidableObjects.length; i++) {
+			  collidableObjects[i].checkCollisions = true;
+		 }
+	 }
 
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    // Run the render loop (fired every time a new frame is rendered)
+    function animate() {
 
-}
+        engine.runRenderLoop(function () {
+            // Determine which camera should be showing depending on whether or not the headset is presenting
+            if(headset) {
+                if(!(headset.isPresenting)) {
+                      var camera2 = new BABYLON.UniversalCamera("Camera", new BABYLON.Vector3(0, 18, -45), scene);
+                      scene.activeCamera = camera2;
+                } else {
+                    scene.activeCamera = camera;
+                }
+            }
 
+            scene.render();
 
+            // Get the change in time between the last frame and the current frame
+            var delta = engine.getDeltaTime() / 1000;
 
+            // Check if A has been pressed to start the game
+            if (begin == true) {
 
+                // Calculate the distance between the camera and dino
+                dinoDistanceFromPlayer = Math.round(BABYLON.Vector3.Distance(dino.position, camera.position));
+                // Round the distance, and use CATCHOFFSET to specify how far away we want dino to be to trigger game over
+                dinoDistanceFromPlayer = Math.round(dinoDistanceFromPlayer - CATCHOFFSET);
 
-function animate() {
-    render();
-    requestAnimationFrame(animate);
-    var time = performance.now();
-    // Get the change in time between frames
-    var delta = clock.getDelta();
-    // Update our frames per second monitor
-    stats.update();
+                // If dino is within range, begin the chase
+                beginChase(dinoDistanceFromPlayer);
 
-    // If the player is in dino's range, trigger the chase
-    var isBeingChased = triggerChase();
-    // If the player is too close, trigger the end of the game
-    if (dino.position.distanceTo(controls.getObject().position) < CATCHOFFSET) {
-        caughtAnimation();
-    // Player is at an undetected distance
-    // Keep the dino moving and let the player keep moving too
-    } else {
-        animateDino(delta);
-        animatePlayer(delta);
+                // Dino has made it to the catch distance, trigger end of game
+                if (dinoDistanceFromPlayer <= 0) {
+                    caught();
+                }
+                // Player has moved out of chase range, hide distance counter UI
+                else {
+                    // Decrement to keep speed consistent
+                    dinoVelocity.z -= dinoVelocity.z * delta;
+
+                    // No collision, apply movement velocity
+                    if (detectDinoCollision() == false) {
+                        dinoVelocity.z += DINOSPEED * delta / 1000;
+                        // Move the dino forward
+                        dino.translate(new BABYLON.Vector3(0, 0, -1), dinoVelocity.z * delta);
+                        // Collision. Adjust direction
+                    } else {
+                        // An array of direction multiples that will correspond to -90, 90, and 180 degree rotations
+                        var directionMultiples = [-1, 1, 2];
+                        // Generate a randon direciton multiple
+                        var randomIndex = getRandomInt(0, 2);
+
+                        // Add the new direction to dino's current rotation
+                        dino.rotation.y += degreesToRadians(90 * directionMultiples[randomIndex]);
+                    }
+                }
+            }
+        });
     }
 
-}
-
-// Render the scene
-function render() {
-    TWEEN.update();
-    renderer.render(scene, camera);
-
-}
-
-// Take a radian amount to rotate dino around its y axis by
-function rotateAnimation(radianRotation) {
-    console.log("collision count = " + collisionCount)
-
-    if (dinoRightCollide && dinoLeftCollide) {
-        console.log("going 180");
-        radianRotation = degreesToRadians(180);
-    } else if (dinoRightCollide) {
-        console.log("going left");
-        radianRotation = degreesToRadians(-90);
-    } else if (dinoLeftCollide) {
-        console.log("going right");
-        radianRotation = degreesToRadians(90);
-    }
-
-    if (collisionCount > 3) {
-        collisionCount = 0;
-        new TWEEN.Tween(dino.position)
-            .to(dino.position, 3000)
-            .easing(TWEEN.Easing.Linear.None)
-            .start();
-
-    } else {
-
-        new TWEEN.Tween(dino.rotation)
-            .to({ y: dino.rotation.y + radianRotation }, 100)
-            .easing(TWEEN.Easing.Linear.None)
-            .onStart(function () {
-                new TWEEN.Tween(dino.position)
-                    .to(dino.position, 1000)
-                    .easing(TWEEN.Easing.Linear.None)
-                    .start();
-            })
-            .onComplete(function () {
-                var rotation = radiansToDegrees(dino.rotation.y);
-
-
-                dino.rotation.y = degreesToRadians(Math.floor(rotation / 90) * 90);
-
-            })
-            .start();
-    }
-}
-
-
-// Make the dino chase the player
-function triggerChase() {
-    // Check if in dino agro range
-    if (dino.position.distanceTo(controls.getObject().position) < 300) {
-        // Adject the target's y value. We only care about x and z for movement.
-        var lookTarget = new THREE.Vector3();
-        lookTarget.copy(controls.getObject().position);
-        lookTarget.y = dino.position.y;
-
-        // Make dino face camera
-        if (collisionCount < 20) {
-            //console.log("Looking at you");
-            dino.lookAt(lookTarget);
+    // Taking a distance, determines if the dino is close enough to the player to start chasing them.
+    // If too far away, that chase ends/doesn't start and the distance counter UI is hidden.
+    function beginChase(distanceAway) {
+        // Dino in chasing range, display the distance counter UI and point dino is player direction
+        if (distanceAway < CHASERANGE) {
+            scene.fogColor = new BABYLON.Color3(.5, 0, 0);
+            dino.lookAt(new BABYLON.Vector3(camera.position.x, dino.position.y, camera.position.z));
+            // Dino not in chasing range, make sure distance counter is hidden
         } else {
-            rotateAnimation(degreesToRadians(90));
+            scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
         }
-
-        // Get distance between dino and camera with a 120 unit offset
-        // Game over when dino is the value of CATCHOFFSET units away from camera
-        var distanceFrom = Math.round(dino.position.distanceTo(controls.getObject().position)) - CATCHOFFSET;
-        // Alert and display distance between camera and dino
-        dinoAlert.innerHTML = "Dino has spotted you! Distance from you: " + distanceFrom;
-        dinoAlert.style.display = '';
-        return true;
-        // Not in agro range, don't start distance countdown
-    } else {
-        dinoAlert.style.display = 'none';
-        return false;
     }
-}
 
+    // Set a counter to keep track of animation timing for the end game animations
+    var frameCount = 0;
 
-// Dino has caught the player. Turn on end prompt.
-function caughtAnimation() {
-    status.innerHTML = "GAME OVER </br></br></br> Press ESC to restart";
-    gameOver = true;
-    status.style.display = '';
-    dinoAlert.style.display = 'none';
-}
+    // Updates the game state and begins the ending animations for the game
+    function caught() {
+        scene.fogColor = new BABYLON.Color3(0, 0, 0);
+        // Update game state
+        gameOver = true;
 
+        // Disable all movement except head rotation
+        camera.inputs.removeByType("FreeCameraKeyboardMoveInput");
 
-
-// Animate the player camera
-function animatePlayer(delta) {
-    // Gradual slowdown
-    velocity.x -= velocity.x * 10.0 * delta;
-    velocity.z -= velocity.z * 10.0 * delta;
-
-    // If no collision and a movement key is being pressed, apply movement velocity
-    if (detectPlayerCollision() == false) {
-        if (moveForward) {
-            velocity.z -= 500.0 * delta;
+        // Every ROARDIVISOR frames make the dino roar
+        if (frameCount % ROARDIVISOR == 0) {
+            dino.skeleton.beginAnimation("roar", false, .5, function () {
+                // Roar complete, do the standing animation in between roars
+                dino.skeleton.beginAnimation("stand", true, .5);
+            });
         }
-        if (moveBackward) velocity.z += 500.0 * delta;
-        if (moveLeft) velocity.x -= 500.0 * delta;
-        if (moveRight) velocity.x += 500.0 * delta;
-
-        controls.getObject().translateX(velocity.x * delta);
-        controls.getObject().translateZ(velocity.z * delta);
-    } else {
-        // Collision or no movement key being pressed. Stop movememnt
-        velocity.x = 0;
-        velocity.z = 0;
-    }
-}
-
-
-//  Determine if the player is colliding with a collidable object
-function detectPlayerCollision() {
-    // The rotation matrix to apply to our direction vector
-    // Undefined by default to indicate ray should coming from front
-    var rotationMatrix;
-    // Get direction of camera
-    var cameraDirection = controls.getDirection(new THREE.Vector3(0, 0, 0)).clone();
-
-    // Check which direction we're moving (not looking)
-    // Flip matrix to that direction so that we can reposition the ray
-    if (moveBackward) {
-        rotationMatrix = new THREE.Matrix4();
-        rotationMatrix.makeRotationY(degreesToRadians(180));
-    }
-    else if (moveLeft) {
-        rotationMatrix = new THREE.Matrix4();
-        rotationMatrix.makeRotationY(degreesToRadians(90));
-    }
-    else if (moveRight) {
-        rotationMatrix = new THREE.Matrix4();
-        rotationMatrix.makeRotationY(degreesToRadians(270));
+        frameCount++;
     }
 
-    // Player is moving forward, no rotation matrix needed
-    if (rotationMatrix !== undefined) {
-        cameraDirection.applyMatrix4(rotationMatrix);
-    }
+    // Check to see if the raycaster of the dino has hit a collidable mesh
+    function detectDinoCollision() {
+        var origin = dino.position;
 
-    // Apply ray to player camera
-    var rayCaster = new THREE.Raycaster(controls.getObject().position, cameraDirection);
+        // Get the forward vector of the dino
+        var forward = new BABYLON.Vector3(0, 0, -1);
+        forward = vecToLocal(forward, dino);
 
-    // If our ray hit a collidable object, return true
-    if (rayIntersect(rayCaster, PLAYERCOLLISIONDISTANCE)) {
-        return true;
-    } else {
-        return false;
-    }
+        // Get the unit vector for direction
+        var direction = forward.subtract(origin);
+        direction = BABYLON.Vector3.Normalize(direction);
 
-}
+        // Create the ray coming out of the front of the dino mesh
+        var ray = new BABYLON.Ray(origin, direction, DINORAYLENGTH);
 
-// Apply movement to the dino, turning when collisions are made
-function animateDino(delta) {
-    // Gradual slowdown
-    dinoVelocity.x -= dinoVelocity.x * 10.0 * delta;
-    dinoVelocity.z -= dinoVelocity.z * 10.0 * delta;
+        // Check to see if the ray has hit anything
+        var hit = scene.pickWithRay(ray);
 
-
-    // If no collision, apply movement velocity
-    if (detectDinoCollision() == false) {
-        dinoVelocity.z += 400.0 * delta;
-        // Move the dino
-        dino.translateZ(dinoVelocity.z * delta);
-
-    } else {
-        // Collision. Adjust direction
-        var directionMultiples = [-1, 1, 2];
-        var randomIndex = getRandomInt(0, 2);
-        var randomDirection = degreesToRadians(90 * directionMultiples[randomIndex]);
-
-        dinoVelocity.z += 400.0 * delta;
-        rotateAnimation(randomDirection);
-    }
-}
-
-
-// Determine whether ornot dino is colliding with a wall
-function detectDinoCollision() {
-    dinoLeftCollide = false;
-    dinoRightCollide = false;
-
-    // Get the rotation matrix from dino
-    var matrix = new THREE.Matrix4();
-    matrix.extractRotation(dino.matrix);
-    // Create direction vectors
-    var directionFront = new THREE.Vector3(0, 0, 1);
-    var directionRight = new THREE.Vector3(-1, 0, 0);
-    var directionLeft = new THREE.Vector3(1, 0, 0);
-    // Get the vectors coming from the front, left, and right of dino
-    directionFront.applyMatrix4(matrix);
-    directionRight.applyMatrix4(matrix);
-    directionLeft.applyMatrix4(matrix);
-
-    // Create raycasters for each direction
-    var rayCasterF = new THREE.Raycaster(dino.position, directionFront);
-    var rayCasterR = new THREE.Raycaster(dino.position, directionRight);
-    var rayCasterL = new THREE.Raycaster(dino.position, directionLeft);
-
-    // See if the left and right rays are intersecting a collidable object
-    dinoRighCollide = rayIntersect(rayCasterR, DINOCOLLISIONDISTANCE);
-    dinoLeftCollide = rayIntersect(rayCasterL, DINOCOLLISIONDISTANCE);
-    
-    // If we have a front collision, we have to adjust our direction so return true
-    if (rayIntersect(rayCasterF, DINOCOLLISIONDISTANCE))
-        return true;
-    else
-        return false;
-
-}
-
-// Takes a ray and sees if it's colliding with anything from the list of collidable objects
-// Returns true if certain distance away from object
-function rayIntersect(ray, distance) {
-    var intersects = ray.intersectObjects(collidableObjects);
-    for (var i = 0; i < intersects.length; i++) {
-        if (intersects[i].distance < distance) {
+        // If we hit a collidable mesh, return true
+        if (hit.pickedMesh) {
             return true;
         }
+        return false;
     }
-    return false;
-}
 
-// Generate a random integer within a range
-function getRandomInt(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min)) + min;
-}
 
-// Converts degrees to radians
-function degreesToRadians(degrees) {
-    return degrees * Math.PI / 180;
-}
+    // Helper function that generates a random integer within a range
+    function getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min)) + min;
+    }
 
-// Converts radians to degrees
-function radiansToDegrees(radians) {
-    return radians * 180 / Math.PI;
-}
 
+    // Helper function that converts degrees to radians
+    function degreesToRadians(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+    // Helper function that converts radians to degrees
+    function radiansToDegrees(radians) {
+        return radians * 180 / Math.PI;
+    }
+
+    // Helper function to compute a directional vector in the frame of reference of a mesh
+    function vecToLocal(vector, mesh) {
+        // Get the position of the mesh compared to the world
+        var m = mesh.getWorldMatrix();
+        // Get direction vector in relation to mesh
+        var v = BABYLON.Vector3.TransformCoordinates(vector, m);
+        return v;
+    }
+
+
+	 // When the window resizes, adjust the engine size
+    function onWindowResize() {
+        engine.resize();
+    }
+});
