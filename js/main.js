@@ -24,14 +24,6 @@ var dino;                   // The dino mesh
 var dinoVelocity = new BABYLON.Vector3(0, 0, 0); // The direction to apply the movement velocity of dino
 
 
-var headset;
-// If a VR headset is connected, get its info
-navigator.getVRDisplays().then(function(displays) {
-  if(displays[0]) {
-      headset = displays[0];
-  }
-});
-
 
 window.addEventListener('DOMContentLoaded', function () {
 
@@ -85,12 +77,6 @@ window.addEventListener('DOMContentLoaded', function () {
 
             camera.attachControl(canvas, true);
 
-
-        // Custom input, adding xbox controller support for left analog stick to map to keyboard arrows
-        camera.inputs.attached.keyboard.keysUp.push(211);
-        camera.inputs.attached.keyboard.keysDown.push(212);
-        camera.inputs.attached.keyboard.keysLeft.push(214);
-        camera.inputs.attached.keyboard.keysRight.push(213);
 
 
         var a = createNewWSC(scene);
