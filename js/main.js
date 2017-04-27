@@ -55,8 +55,16 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
         // Create a WebVR camera with the trackPosition property set to false so that we can control movement with the gamepad
-        
-    if (navigator.getVRDisplays) {
+        var headset;
+// If a VR headset is connected, get its info
+navigator.getVRDisplays().then(function (displays) {
+    if (displays[0]) {
+        headset = displays[0];
+    }
+});
+
+
+    if (headset) {
         camera = new BABYLON.WebVRFreeCamera("camera1", new BABYLON.Vector3(0, 14, 0), scene, true, { trackPosition: false });
 
         camera.deviceScaleFactor = 1;
