@@ -24,11 +24,43 @@ var dino;                   // The dino mesh
 var dinoVelocity = new BABYLON.Vector3(0, 0, 0); // The direction to apply the movement velocity of dino
 
 
+var headset;
+// If a VR headset is connected, get its info
+navigator.getVRDisplays().then(function(displays) {
+  if(displays[0]) {
+      headset = displays[0];
+  }
+});
 
 
 window.addEventListener('DOMContentLoaded', function () {
 
+    // Connects an xbox controller has been plugged in and and a button/trigger moved,
+    function onNewGamepadConnected(gamepad) {
+        var xboxpad = gamepad
 
+        xboxpad.onbuttondown(function (buttonValue) {
+            // When the A button is pressed, either start or reload the game depending on the game state
+            if (buttonValue == BABYLON.Xbox360Button.A) {
+
+                // Game is over, reload it
+                if (gameOver) {
+                    location.reload();
+                }
+                // Game has begun
+                else {
+                    // Remove instructions box
+                    instructBox.dispose();
+                    begin = true;
+                    // Start looping the dino walking animation
+                    scene.beginAnimation(dino.skeleton, 111, 130, true, 1);
+                }
+            }
+        });
+    }
+
+    // Get all connected gamepads
+    var gamepads = new BABYLON.Gamepads(function (gamepad) { onNewGamepadConnected(gamepad); });
 
 
     // Grab where we'll be displayed the game
@@ -37,6 +69,21 @@ window.addEventListener('DOMContentLoaded', function () {
     // load the 3D engine
     var engine = new BABYLON.Engine(canvas, true);
 
+
+
+    var createNewWSC = function (scene) {
+        var myText2D = new BABYLON.Text2D("Hellooooo", { fontName: "50pt Lucida Console", marginAlignment: "h: center, v: center", fontSignedDistanceField: true });
+        
+        var WSC = new BABYLON.WorldSpaceCanvas2D(scene, new BABYLON.Size(3, 3), {
+            id: "WorldSpaceCanvas",
+            backgroundFill: "#C0C0C040",
+            backgroundRoundRadius: 20,
+            unitScaleFactor: 100,
+            children: [myText2D]
+        });
+    
+        return WSC;
+    };
 
     // Creates and return the scene
     var createScene = function () {
@@ -55,35 +102,32 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
         // Create a WebVR camera with the trackPosition property set to false so that we can control movement with the gamepad
-        var headset;
-// If a VR headset is connected, get its info
-navigator.getVRDisplays().then(function (displays) {
-    if (displays[0]) {
-        headset = displays[0];
-    }
-});
-
-
-    if (headset) {
-        camera = new BABYLON.WebVRFreeCamera("camera1", new BABYLON.Vector3(0, 14, 0), scene, true, { trackPosition: false });
-
-        camera.deviceScaleFactor = 1;
-    }
-    else {
-        camera = new BABYLON.VRDeviceOrientationFreeCamera("vrCam", new BABYLON.Vector3(0, 1, 0), scene);
-    }
+        camera = new BABYLON.VRDeviceOrientationFreeCamera("vrcam", new BABYLON.Vector3(0, 18, -45), scene);
 
 
         // Set the ellipsoid around the camera. This will act as the collider box for when the player runs into walls
         camera.ellipsoid = new BABYLON.Vector3(1, 9, 1);
         camera.applyGravity = true;
 
-scene.onPointerDown = function () {
+        // attach the camera to the canvas once the user clicks the window. Needed to activate webvr/headset connection
+        scene.onPointerDown = function () {
             scene.onPointerDown = undefined
             camera.attachControl(canvas, true);
         }
 
+        // Custom input, adding xbox controller support for left analog stick to map to keyboard arrows
+        camera.inputs.attached.keyboard.keysUp.push(211);
+        camera.inputs.attached.keyboard.keysDown.push(212);
+        camera.inputs.attached.keyboard.keysLeft.push(214);
+        camera.inputs.attached.keyboard.keysRight.push(213);
 
+
+        var a = createNewWSC(scene);
+        a.worldSpaceCanvasNode.parent  = camera;
+        a.worldSpaceCanvasNode.position.y = camera.position.y;
+        a.worldSpaceCanvasNode.position.x = camera.position.x + 5;
+        a.worldSpaceCanvasNode.position.z = camera.position.z + 5;
+        a.worldSpaceCanvasNode.material.backFaceCulling = false;
 
 
         // Create the instructionx display box
@@ -119,6 +163,7 @@ scene.onPointerDown = function () {
     // Load the dinosaur model
     BABYLON.SceneLoader.ImportMesh("Dino", "models/", "dino.babylon", scene, function (newMeshes) {
 
+
         dino = newMeshes[0];
 
         // Set the initial size and position of the dino
@@ -135,6 +180,7 @@ scene.onPointerDown = function () {
 
         // Start looping the standing animation before the game begins
         dino.skeleton.beginAnimation("stand", true, .5);
+
 
         // Run the render loop (fired every time a new frame is rendered)
         animate();
@@ -280,7 +326,20 @@ scene.onPointerDown = function () {
 
         engine.runRenderLoop(function () {
             // Determine which camera should be showing depending on whether or not the headset is presenting
-
+            if(headset) {
+                if(!(headset.isPresenting)) {
+                      var camera2 = new BABYLON.VRDeviceOrientationFreeCamera("vrcam", new BABYLON.Vector3(0, 18, -45), scene);
+                      scene.activeCamera = camera2;
+                              var a = createNewWSC(scene);
+        a.worldSpaceCanvasNode.parent  = camera2;
+        a.worldSpaceCanvasNode.position.y = camera2.position.y;
+        a.worldSpaceCanvasNode.position.x = camera2.position.x + 5;
+        a.worldSpaceCanvasNode.position.z = camera2.position.z + 5;
+        a.worldSpaceCanvasNode.material.backFaceCulling = false;
+                } else {
+                    scene.activeCamera = camera;
+                }
+            }
 
             scene.render();
 
@@ -350,7 +409,7 @@ scene.onPointerDown = function () {
         gameOver = true;
 
         // Disable all movement except head rotation
-        camera.inputs.removeByType("FreeCameraKeyboardMoveInput");
+        //camera.inputs.removeByType("FreeCameraKeyboardMoveInput");
 
         // Every ROARDIVISOR frames make the dino roar
         if (frameCount % ROARDIVISOR == 0) {
