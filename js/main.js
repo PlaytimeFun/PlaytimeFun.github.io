@@ -35,32 +35,7 @@ navigator.getVRDisplays().then(function(displays) {
 
 window.addEventListener('DOMContentLoaded', function () {
 
-    // Connects an xbox controller has been plugged in and and a button/trigger moved,
-    function onNewGamepadConnected(gamepad) {
-        var xboxpad = gamepad
 
-        xboxpad.onbuttondown(function (buttonValue) {
-            // When the A button is pressed, either start or reload the game depending on the game state
-            if (buttonValue == BABYLON.Xbox360Button.A) {
-
-                // Game is over, reload it
-                if (gameOver) {
-                    location.reload();
-                }
-                // Game has begun
-                else {
-                    // Remove instructions box
-                    instructBox.dispose();
-                    begin = true;
-                    // Start looping the dino walking animation
-                    scene.beginAnimation(dino.skeleton, 111, 130, true, 1);
-                }
-            }
-        });
-    }
-
-    // Get all connected gamepads
-    var gamepads = new BABYLON.Gamepads(function (gamepad) { onNewGamepadConnected(gamepad); });
 
 
     // Grab where we'll be displayed the game
@@ -101,11 +76,7 @@ window.addEventListener('DOMContentLoaded', function () {
             camera.attachControl(canvas, true);
         }
 
-        // Custom input, adding xbox controller support for left analog stick to map to keyboard arrows
-        camera.inputs.attached.keyboard.keysUp.push(211);
-        camera.inputs.attached.keyboard.keysDown.push(212);
-        camera.inputs.attached.keyboard.keysLeft.push(214);
-        camera.inputs.attached.keyboard.keysRight.push(213);
+
 
 
         // Create the instructionx display box
@@ -302,13 +273,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
         engine.runRenderLoop(function () {
             // Determine which camera should be showing depending on whether or not the headset is presenting
-            if(headset) {
-                if(!(headset.isPresenting)) {
-                      
-                } else {
 
-                }
-            }
 
             scene.render();
 
