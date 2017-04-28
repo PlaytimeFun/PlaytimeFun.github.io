@@ -302,7 +302,7 @@ window.addEventListener('DOMContentLoaded', function () {
                         var randomIndex = getRandomInt(0, 2);
 
                         // Add the new direction to dino's current rotation
-                        dino.rotation.y += degreesToRadians(90 * directionMultiples[randomIndex]);
+                        //dino.rotation.y += degreesToRadians(90 * directionMultiples[randomIndex]);
                     }
                 
             }
