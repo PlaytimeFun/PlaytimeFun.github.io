@@ -5,7 +5,7 @@ var CHASERANGE = 200;       // How close dino can get before tirggering the chas
 var DINOSCALE = 20;         // How much to multiple the size of the dino by
 var DINOSPEED = 1600;       // How fast the dino will move
 
-var DINORAYLENGTH = 55;     // How close dino can get to collidable objects
+var DINORAYLENGTH = 10;     // How close dino can get to collidable objects
 var ROARDIVISOR = 250;      // How many frames to wait between roar animations (Once game over)
 
 var instructBox;            // Textured box that displays the game instructions
