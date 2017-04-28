@@ -102,7 +102,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
         // Set the initial size and position of the dino
         dino.scaling = new BABYLON.Vector3(DINOSCALE, DINOSCALE, DINOSCALE);
-        dino.position = new BABYLON.Vector3(500, 18, -30);
+        dino.position = new BABYLON.Vector3(500, 18, -90);
         // Set the size of the ellips-shaped collider around dino
         dino.ellipsoid = new BABYLON.Vector3(.5, .5, .5);
         dino.rotation.y = degreesToRadians(90);
