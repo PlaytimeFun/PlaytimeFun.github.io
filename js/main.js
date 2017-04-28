@@ -1,6 +1,6 @@
 var UNITWIDTH = 90;         // Width of the cubes in the maze
 var UNITHEIGHT = 45;        // Height of the cubes in the maze
-var CATCHOFFSET = 150;      // How close dino can get before game over
+var CATCHOFFSET = 100;      // How close dino can get before game over
 var CHASERANGE = 200;       // How close dino can get before tirggering the chase
 var DINOSCALE = 20;         // How much to multiple the size of the dino by
 var DINOSPEED = 1600;       // How fast the dino will move
@@ -36,20 +36,6 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
 
-    var createNewWSC = function (scene) {
-        var myText2D = new BABYLON.Text2D("Hellooooo", { fontName: "50pt Lucida Console", marginAlignment: "h: center, v: center", fontSignedDistanceField: true });
-        
-        var WSC = new BABYLON.WorldSpaceCanvas2D(scene, new BABYLON.Size(3, 3), {
-            id: "WorldSpaceCanvas",
-            backgroundFill: "#C0C0C040",
-            backgroundRoundRadius: 20,
-            unitScaleFactor: 100,
-            children: [myText2D]
-        });
-    
-        return WSC;
-    };
-
     // Creates and return the scene
     var createScene = function () {
 
@@ -75,16 +61,7 @@ window.addEventListener('DOMContentLoaded', function () {
         camera.applyGravity = true;
 
 
-            camera.attachControl(canvas, true);
-
-
-
-        var a = createNewWSC(scene);
-        a.worldSpaceCanvasNode.parent  = camera;
-        a.worldSpaceCanvasNode.position.y = camera.position.y;
-        a.worldSpaceCanvasNode.position.x = camera.position.x + 5;
-        a.worldSpaceCanvasNode.position.z = camera.position.z + 5;
-        a.worldSpaceCanvasNode.material.backFaceCulling = false;
+        camera.attachControl(canvas, true);
 
 
         // Create the instructionx display box
@@ -131,12 +108,12 @@ window.addEventListener('DOMContentLoaded', function () {
         dino.rotation.y = degreesToRadians(90);
 
         // Enable blending of animations (i.e. transitioning from standing to walking animation smoothly)
-        dino.skeleton.enableBlending(0.1)
+        dino.skeleton.enableBlending(0.1);
 
 
 
         // Start looping the standing animation before the game begins
-        dino.skeleton.beginAnimation("stand", true, .5);
+        scene.beginAnimation(dino.skeleton, 111, 130, true, 1);
 
 
         // Run the render loop (fired every time a new frame is rendered)
@@ -290,8 +267,10 @@ window.addEventListener('DOMContentLoaded', function () {
             // Get the change in time between the last frame and the current frame
             var delta = engine.getDeltaTime() / 1000;
 
-            // Check if A has been pressed to start the game
-            if (begin == true) {
+
+
+
+                
 
                 // Calculate the distance between the camera and dino
                 dinoDistanceFromPlayer = Math.round(BABYLON.Vector3.Distance(dino.position, camera.position));
@@ -325,7 +304,7 @@ window.addEventListener('DOMContentLoaded', function () {
                         // Add the new direction to dino's current rotation
                         dino.rotation.y += degreesToRadians(90 * directionMultiples[randomIndex]);
                     }
-                }
+                
             }
         });
     }
