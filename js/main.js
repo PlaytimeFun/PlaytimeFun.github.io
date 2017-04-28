@@ -46,9 +46,9 @@ window.addEventListener('DOMContentLoaded', function () {
         scene.gravity = new BABYLON.Vector3(0, -9.81, 0);
 
         // Turn on fog for cool effects
-        scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
-        scene.fogDensity = 0.001;
-        scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
+        // scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
+        // scene.fogDensity = 0.001;
+        // scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
 
 
 
@@ -314,11 +314,11 @@ window.addEventListener('DOMContentLoaded', function () {
     function beginChase(distanceAway) {
         // Dino in chasing range, display the distance counter UI and point dino is player direction
         if (distanceAway < CHASERANGE) {
-            scene.fogColor = new BABYLON.Color3(.5, 0, 0);
+            //scene.fogColor = new BABYLON.Color3(.5, 0, 0);
             dino.lookAt(new BABYLON.Vector3(camera.position.x, dino.position.y, camera.position.z));
             // Dino not in chasing range, make sure distance counter is hidden
         } else {
-            scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
+            //scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
         }
     }
 
@@ -327,7 +327,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
     // Updates the game state and begins the ending animations for the game
     function caught() {
-        scene.fogColor = new BABYLON.Color3(0, 0, 0);
+        //scene.fogColor = new BABYLON.Color3(0, 0, 0);
         // Update game state
         gameOver = true;
 
