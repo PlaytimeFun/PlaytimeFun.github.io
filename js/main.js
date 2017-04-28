@@ -95,7 +95,7 @@ window.addEventListener('DOMContentLoaded', function () {
     var scene = createScene();
 
     // Load the dinosaur model
-    BABYLON.SceneLoader.ImportMesh("Dino", "models/", "dino2babylon.babylon", scene, function (newMeshes) {
+    BABYLON.SceneLoader.ImportMesh("Dino", "models/", "dino3babylon.babylon", scene, function (newMeshes) {
 
 
         dino = newMeshes[0];
