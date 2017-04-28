@@ -290,7 +290,7 @@ window.addEventListener('DOMContentLoaded', function () {
                     dinoVelocity.z -= dinoVelocity.z * delta;
 
                     // No collision, apply movement velocity
-                    if (detectDinoCollision() == false) {
+                    if (1 == 1) {
                         dinoVelocity.z += DINOSPEED * delta / 1000;
                         // Move the dino forward
                         dino.translate(new BABYLON.Vector3(0, 0, -1), dinoVelocity.z * delta);
@@ -302,7 +302,7 @@ window.addEventListener('DOMContentLoaded', function () {
                         var randomIndex = getRandomInt(0, 2);
 
                         // Add the new direction to dino's current rotation
-                        //dino.rotation.y += degreesToRadians(90 * directionMultiples[randomIndex]);
+                        dino.rotation.y += degreesToRadians(90 * directionMultiples[randomIndex]);
                     }
                 
             }
