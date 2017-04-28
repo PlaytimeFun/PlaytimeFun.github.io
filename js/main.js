@@ -105,7 +105,7 @@ window.addEventListener('DOMContentLoaded', function () {
         dino.position = new BABYLON.Vector3(500, 18, -90);
         // Set the size of the ellips-shaped collider around dino
         dino.ellipsoid = new BABYLON.Vector3(.5, .5, .5);
-        //dino.rotation.y = degreesToRadians(90);
+        dino.rotation.y = degreesToRadians(90);
 
         // Enable blending of animations (i.e. transitioning from standing to walking animation smoothly)
         dino.skeleton.enableBlending(0.1);
