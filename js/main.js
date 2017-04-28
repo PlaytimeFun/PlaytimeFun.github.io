@@ -5,7 +5,7 @@ var CHASERANGE = 200;       // How close dino can get before tirggering the chas
 var DINOSCALE = 20;         // How much to multiple the size of the dino by
 var DINOSPEED = 1600;       // How fast the dino will move
 
-var DINORAYLENGTH = 10;     // How close dino can get to collidable objects
+var DINORAYLENGTH = 55;     // How close dino can get to collidable objects
 var ROARDIVISOR = 250;      // How many frames to wait between roar animations (Once game over)
 
 var instructBox;            // Textured box that displays the game instructions
@@ -105,7 +105,7 @@ window.addEventListener('DOMContentLoaded', function () {
         dino.position = new BABYLON.Vector3(500, 18, -90);
         // Set the size of the ellips-shaped collider around dino
         dino.ellipsoid = new BABYLON.Vector3(.5, .5, .5);
-        dino.rotation.y = degreesToRadians(90);
+        //dino.rotation.y = degreesToRadians(90);
 
         // Enable blending of animations (i.e. transitioning from standing to walking animation smoothly)
         dino.skeleton.enableBlending(0.1);
