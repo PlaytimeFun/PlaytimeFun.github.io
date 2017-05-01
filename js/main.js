@@ -66,15 +66,7 @@ window.addEventListener('DOMContentLoaded', function () {
 		camera.setTarget(a);
 		console.log(camera.getTarget());
 		
-        // Create the instructionx display box
-        instructBox = BABYLON.MeshBuilder.CreateBox("instructbox", { height: 50, width: 80, depth: 1 }, scene);
-        instructBox.position = new BABYLON.Vector3(0,20,140);
-        // Apply the texture to the material
-        var instructMaterial = new BABYLON.StandardMaterial("instructionTexture", scene);
-        instructMaterial.specularTexture = new BABYLON.Texture("textures/instructions.png", scene);
-        instructMaterial.ambientTexture = new BABYLON.Texture("textures/instructions.png", scene);
-        // Apply the material to the mesh
-        instructBox.material = instructMaterial;
+
 
         // Create the skybox
         var skybox = BABYLON.Mesh.CreateBox("skyBox", 5000.0, scene);
@@ -268,15 +260,15 @@ window.addEventListener('DOMContentLoaded', function () {
 
             scene.render();
 			
-			var direction = camera.getTarget().subtract(camera.position).normalize();
-			camera.position.addInPlace(direction.scale(1));
+
 
             // Get the change in time between the last frame and the current frame
             var delta = engine.getDeltaTime() / 1000;
 
 
 
-                
+
+
 
                 // Calculate the distance between the camera and dino
                 dinoDistanceFromPlayer = Math.round(BABYLON.Vector3.Distance(dino.position, camera.position));
@@ -292,6 +284,12 @@ window.addEventListener('DOMContentLoaded', function () {
                 }
                 // Player has moved out of chase range, hide distance counter UI
                 else {
+                    			var direction = camera.getTarget().subtract(camera.position).normalize();
+			camera.position.addInPlace(direction.scale(.4));
+                                    if(camera.position.y != 18) {
+                    camera.position.y = 18;
+                }
+
                     // Decrement to keep speed consistent
                     dinoVelocity.z -= dinoVelocity.z * delta;
 
