@@ -299,7 +299,7 @@ window.addEventListener('DOMContentLoaded', function () {
                     dinoVelocity.z -= dinoVelocity.z * delta;
 
                     // No collision, apply movement velocity
-                    if (detectDinoCollision() == false) {
+                    if (1 == 1) {
                         dinoVelocity.z += DINOSPEED * delta / 1000;
                         // Move the dino forward
                         dino.translate(new BABYLON.Vector3(0, 0, -1), dinoVelocity.z * delta);
@@ -380,10 +380,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
         // If we hit a collidable mesh, return true
         if (hit.pickedMesh) {
-            if(hit.pickedMesh.name == "cube") {
-                console.log("cube");
-                return true;
-            }
+            return true;
         }
         return false;
     }
