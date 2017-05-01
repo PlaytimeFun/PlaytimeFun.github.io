@@ -271,7 +271,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
 
-            if(begin == true) {
+            if(begin) {
 
 
                 // Calculate the distance between the camera and dino
@@ -299,7 +299,7 @@ window.addEventListener('DOMContentLoaded', function () {
                     dinoVelocity.z -= dinoVelocity.z * delta;
 
                     // No collision, apply movement velocity
-                    if (1 == 1) {
+                    if (detectDinoCollision() == false) {
                         dinoVelocity.z += DINOSPEED * delta / 1000;
                         // Move the dino forward
                         dino.translate(new BABYLON.Vector3(0, 0, -1), dinoVelocity.z * delta);
