@@ -1,6 +1,6 @@
 var UNITWIDTH = 90;         // Width of the cubes in the maze
 var UNITHEIGHT = 45;        // Height of the cubes in the maze
-var CATCHOFFSET = 100;      // How close dino can get before game over
+var CATCHOFFSET = 80;      // How close dino can get before game over
 var CHASERANGE = 200;       // How close dino can get before tirggering the chase
 var DINOSCALE = 20;         // How much to multiple the size of the dino by
 var DINOSPEED = 1600;       // How fast the dino will move
