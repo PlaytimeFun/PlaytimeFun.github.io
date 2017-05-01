@@ -24,6 +24,10 @@ var dino;                   // The dino mesh
 var dinoVelocity = new BABYLON.Vector3(0, 0, 0); // The direction to apply the movement velocity of dino
 
 
+    setTimeout(function () {
+        begin = true;
+    }, 8000);
+
 
 window.addEventListener('DOMContentLoaded', function () {
 
@@ -267,7 +271,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
 
-
+            if(begin == true) {
 
 
                 // Calculate the distance between the camera and dino
@@ -281,6 +285,7 @@ window.addEventListener('DOMContentLoaded', function () {
                 // Dino has made it to the catch distance, trigger end of game
                 if (dinoDistanceFromPlayer <= 0) {
                     caught();
+                    scene.fogColor = new BABYLON.Color3(0, 0, 0);
                 }
                 // Player has moved out of chase range, hide distance counter UI
                 else {
@@ -308,7 +313,7 @@ window.addEventListener('DOMContentLoaded', function () {
                         // Add the new direction to dino's current rotation
                         dino.rotation.y += degreesToRadians(90 * directionMultiples[randomIndex]);
                     }
-                
+                }
             }
         });
     }
@@ -318,11 +323,12 @@ window.addEventListener('DOMContentLoaded', function () {
     function beginChase(distanceAway) {
         // Dino in chasing range, display the distance counter UI and point dino is player direction
         if (distanceAway < CHASERANGE) {
+            scene.fogColor = new BABYLON.Color3(.5, 0, 0);
             //scene.fogColor = new BABYLON.Color3(.5, 0, 0);
             dino.lookAt(new BABYLON.Vector3(camera.position.x, dino.position.y, camera.position.z));
             // Dino not in chasing range, make sure distance counter is hidden
         } else {
-            //scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
+            scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
         }
     }
 
@@ -345,7 +351,13 @@ window.addEventListener('DOMContentLoaded', function () {
                 dino.skeleton.beginAnimation("stand", true, .5);
             });
         }
+
+        if(frameCount == 420) {
+            location.reload();
+        }
         frameCount++;
+
+
     }
 
     // Check to see if the raycaster of the dino has hit a collidable mesh
