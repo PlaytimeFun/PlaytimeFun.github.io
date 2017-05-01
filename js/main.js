@@ -365,7 +365,7 @@ window.addEventListener('DOMContentLoaded', function () {
         var origin = dino.position;
 
         // Get the forward vector of the dino
-        var forward = new BABYLON.Vector3(0, -1, 0);
+        var forward = new BABYLON.Vector3(0, 0, -1);
         forward = vecToLocal(forward, dino);
 
         // Get the unit vector for direction
@@ -380,7 +380,10 @@ window.addEventListener('DOMContentLoaded', function () {
 
         // If we hit a collidable mesh, return true
         if (hit.pickedMesh) {
-            return true;
+            if(hit.pickedMesh.name == "cube") {
+                console.log("cube");
+                return true;
+            }
         }
         return false;
     }
