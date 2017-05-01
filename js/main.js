@@ -35,7 +35,6 @@ window.addEventListener('DOMContentLoaded', function () {
     var engine = new BABYLON.Engine(canvas, true);
 
 
-
     // Creates and return the scene
     var createScene = function () {
 
@@ -46,9 +45,9 @@ window.addEventListener('DOMContentLoaded', function () {
         scene.gravity = new BABYLON.Vector3(0, -9.81, 0);
 
         // Turn on fog for cool effects
-        // scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
-        // scene.fogDensity = 0.001;
-        // scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
+		scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
+		scene.fogDensity = 0.001;
+		scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
 
 
 
@@ -63,7 +62,10 @@ window.addEventListener('DOMContentLoaded', function () {
 
         camera.attachControl(canvas, true);
 
-
+		var a = new BABYLON.Vector3(0,20,140);
+		camera.setTarget(a);
+		console.log(camera.getTarget());
+		
         // Create the instructionx display box
         instructBox = BABYLON.MeshBuilder.CreateBox("instructbox", { height: 50, width: 80, depth: 1 }, scene);
         instructBox.position = new BABYLON.Vector3(0,20,140);
@@ -85,6 +87,8 @@ window.addEventListener('DOMContentLoaded', function () {
         skyboxMaterial.disableLighting = true;
         skybox.material = skyboxMaterial;
 
+
+		
         // return the created scene
         return scene;
     }
@@ -263,10 +267,12 @@ window.addEventListener('DOMContentLoaded', function () {
 
 
             scene.render();
+			
+			var direction = camera.getTarget().subtract(camera.position).normalize();
+			camera.position.addInPlace(direction.scale(1));
 
             // Get the change in time between the last frame and the current frame
             var delta = engine.getDeltaTime() / 1000;
-
 
 
 
