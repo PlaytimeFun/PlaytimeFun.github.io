@@ -290,7 +290,7 @@ window.addEventListener('DOMContentLoaded', function () {
                 // Player has moved out of chase range, hide distance counter UI
                 else {
                     			var direction = camera.getTarget().subtract(camera.position).normalize();
-			camera.position.addInPlace(direction.scale(.8));
+			camera.position.addInPlace(direction.scale(1));
                                     if(camera.position.y != 18) {
                     camera.position.y = 18;
                 }
