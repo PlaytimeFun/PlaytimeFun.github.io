@@ -76,7 +76,6 @@ window.addEventListener('DOMContentLoaded', function () {
         // Create the Babylon scene
         var scene = new BABYLON.Scene(engine);
 	
-	scene.createDefaultVRExperience();
         // Apply gravity so that any Y axis movement is ignored
         scene.gravity = new BABYLON.Vector3(0, -9.81, 0);
 
