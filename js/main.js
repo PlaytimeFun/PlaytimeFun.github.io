@@ -1,36 +1,49 @@
+var UNITWIDTH = 90;         // Width of the cubes in the maze
+var UNITHEIGHT = 45;        // Height of the cubes in the maze
+var CATCHOFFSET = 150;      // How close dino can get before game over
+var CHASERANGE = 200;       // How close dino can get before tirggering the chase
+var DINOSCALE = 20;         // How much to multiple the size of the dino by
+var DINOSPEED = 1600;       // How fast the dino will move
+
+var DINORAYLENGTH = 55;     // How close dino can get to collidable objects
+var ROARDIVISOR = 250;      // How many frames to wait between roar animations (Once game over)
+
+var instructBox;            // Textured box that displays the game instructions
+
+// Game states
+var begin = false;          // Flag to determine whether the game should begin
+var gameOver = false;       // Flag to determines whether the game is over
+
+var scene;
+var camera;                 // The camera for the scene
+var ground;                 // The ground plane mesh
+var totalCubesWide;         // How many wall cubes can make the width of the map
+var mapSize;                // Height and width of the maze ground plane
+var collidableObjects = []; // Array holding all meshes that are collidable
+var dino;                   // The dino mesh
+var dinoVelocity = new BABYLON.Vector3(0, 0, 0); // The direction to apply the movement velocity of dino
+
+
+var headset;
+// If a VR headset is connected, get its info
+navigator.getVRDisplays().then(function(displays) {
+  if(displays[0]) {
+      headset = displays[0];;
+  }
+});
+
+
 window.addEventListener('DOMContentLoaded', function () {
 
-    const UNITWIDTH = 90;         // Width of the cubes in the maze
-    const UNITHEIGHT = 45;        // Height of the cubes in the maze
-    const CATCHOFFSET = 150;      // How close dino can get before game over
-    const CHASERANGE = 300;       // How close dino can get before tirggering the chase
-    const DINOSCALE = 20;         // How much to multiple the size of the dino by
-    const DINOSPEED = 1600;       // How fast the dino will move
-
-    const DINORAYLENGTH = 55;     // How close dino can get to collidable objects
-    const ROARDIVISOR = 250;      // How many frames to wait between roar animations (Once game over)
-
-
-    // Game states
-    var begin = false;          // Flag to determine whether the game should begin
-    var gameOver = false;       // Flag to determines whether the game is over
-
-
-    var camera;                 // The camera for the scene
-    var ground;                 // The ground plane mesh
-    var totalCubesWide;         // How many wall cubes can make the width of the map
-    var mapSize;                // Height and width of the maze ground plane
-    var collidableObjects = []; // Array holding all meshes that are collidable
-    var dino;                   // The dino mesh
-    var dinoVelocity = new BABYLON.Vector3(0, 0, 0); // The direction to apply the movement velocity of dino
-
-
-    // Connects an xbox controller has been plugged in and and a button/trigger moved
+    // Connects an xbox controller has been plugged in and and a button/trigger moved,
     function onNewGamepadConnected(gamepad) {
         var xboxpad = gamepad
 
         xboxpad.onbuttondown(function (buttonValue) {
+            // When the A button is pressed, either start or reload the game depending on the game state
             if (buttonValue == BABYLON.Xbox360Button.A) {
+
+                // Game is over, reload it
                 if (gameOver) {
                     location.reload();
                 }
@@ -39,6 +52,7 @@ window.addEventListener('DOMContentLoaded', function () {
                     // Remove instructions box
                     instructBox.dispose();
                     begin = true;
+                    // Start looping the dino walking animation
                     scene.beginAnimation(dino.skeleton, 111, 130, true, 1);
                 }
             }
@@ -55,7 +69,7 @@ window.addEventListener('DOMContentLoaded', function () {
     // load the 3D engine
     var engine = new BABYLON.Engine(canvas, true);
 
-    var instructBox;            // Textured box that displays the game instructions
+
     // Creates and return the scene
     var createScene = function () {
 
@@ -70,27 +84,39 @@ window.addEventListener('DOMContentLoaded', function () {
         scene.fogDensity = 0.001;
         scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
 
+
+
         // Create a WebVR camera with the trackPosition property set to false so that we can control movement with the gamepad
         camera = new BABYLON.WebVRFreeCamera("camera1", new BABYLON.Vector3(0, 14, 0), scene, true, { trackPosition: false });
+        camera.deviceScaleFactor = 1;
+
 
         // Set the ellipsoid around the camera. This will act as the collider box for when the player runs into walls
         camera.ellipsoid = new BABYLON.Vector3(1, 9, 1);
         camera.applyGravity = true;
 
-        // Attach the camera to the canvas once the user clicks the window. Needed to activate webvr/headset connection
+        // attach the camera to the canvas once the user clicks the window. Needed to activate webvr/headset connection
         scene.onPointerDown = function () {
             scene.onPointerDown = undefined
             camera.attachControl(canvas, true);
         }
-        
+
         // Custom input, adding xbox controller support for left analog stick to map to keyboard arrows
         camera.inputs.attached.keyboard.keysUp.push(211);
         camera.inputs.attached.keyboard.keysDown.push(212);
         camera.inputs.attached.keyboard.keysLeft.push(214);
         camera.inputs.attached.keyboard.keysRight.push(213);
 
-        // Allow camera to be controlled
-        camera.attachControl(canvas, true);
+
+        // Create the instructionx display box
+        instructBox = BABYLON.MeshBuilder.CreateBox("instructbox", { height: 50, width: 80, depth: 1 }, scene);
+        instructBox.position = new BABYLON.Vector3(0,20,140);
+        // Apply the texture to the material
+        var instructMaterial = new BABYLON.StandardMaterial("instructionTexture", scene);
+        instructMaterial.specularTexture = new BABYLON.Texture("textures/instructions.png", scene);
+        instructMaterial.ambientTexture = new BABYLON.Texture("textures/instructions.png", scene);
+        // Apply the material to the mesh
+        instructBox.material = instructMaterial;
 
         // Create the skybox
         var skybox = BABYLON.Mesh.CreateBox("skyBox", 5000.0, scene);
@@ -103,23 +129,11 @@ window.addEventListener('DOMContentLoaded', function () {
         skyboxMaterial.disableLighting = true;
         skybox.material = skyboxMaterial;
 
-        // Create the instruction display box
-        instructBox = BABYLON.MeshBuilder.CreateBox("instructbox", { height: 50, width: 80, depth: 1 }, scene);
-        instructBox.position = new BABYLON.Vector3(0, 20, 140);
-
-        // Apply the texture to the material
-        var instructMaterial = new BABYLON.StandardMaterial("instructionTexture", scene);
-        instructMaterial.specularTexture = new BABYLON.Texture("textures/instructions.png", scene);
-        instructMaterial.ambientTexture = new BABYLON.Texture("textures/instructions.png", scene);
-
-        // Apply the material to the mesh
-        instructBox.material = instructMaterial;
-
         // return the created scene
         return scene;
     }
 
-    // Listen for if the window changes sizes and adjust
+	 // Listen for if the window changes sizes and adjust
     window.addEventListener('resize', onWindowResize, false);
     // Create the scene
     var scene = createScene();
@@ -139,6 +153,8 @@ window.addEventListener('DOMContentLoaded', function () {
         // Enable blending of animations (i.e. transitioning from standing to walking animation smoothly)
         dino.skeleton.enableBlending(0.1)
 
+
+
         // Start looping the standing animation before the game begins
         dino.skeleton.beginAnimation("stand", true, .5);
 
@@ -149,21 +165,11 @@ window.addEventListener('DOMContentLoaded', function () {
 
     // Create the walls/ground
     createMazeCubes();
-    addLights();
+	 addLights();
     createGround();
     createPerimWalls();
-    enableAndCheckCollisions();
+	 enableAndCheckCollisions();
 
-    // Create some lights to brighten up our scene
-    function addLights() {
-        var light0 = new BABYLON.PointLight('light0', new BABYLON.Vector3(1, 10, 0), scene);
-        light0.groundColor = new BABYLON.Color3(0, 0, 0);
-
-        var light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
-        light1.diffuse = new BABYLON.Color3(.5, .5, .5);
-        light1.specular = new BABYLON.Color3(.5, .5, .5);
-        light1.groundColor = new BABYLON.Color3(0, 0, 0);
-    }
 
     // Create a maze of cubes whose postions are based off a 2D array
     function createMazeCubes() {
@@ -193,10 +199,10 @@ window.addEventListener('DOMContentLoaded', function () {
         ];
 
         // Create wall material
-        var wallMat = new BABYLON.StandardMaterial("wallTex", scene);
+        var wallMat = new BABYLON.StandardMaterial("wallMat", scene);
         wallMat.diffuseColor = new BABYLON.Color3.FromInts(129, 207, 224);
-        wallMat.specularColor = new BABYLON.Color3.FromInts(0, 0, 0);
-
+        wallMat.specularColor = new BABYLON.Color3.FromInts(70, 70, 70);
+        wallMat.ambientColor = new BABYLON.Color3.FromInts(70, 70, 70);
 
 
         // Keep cubes within boundry walls
@@ -230,11 +236,20 @@ window.addEventListener('DOMContentLoaded', function () {
         mapSize = totalCubesWide * UNITWIDTH;
     }
 
+	 // Create some lights to brighten up our scene
+	 function addLights() {
+		 var light0 = new BABYLON.PointLight('light0', new BABYLON.Vector3(1, 10, 0), scene);
+		 light0.groundColor = new BABYLON.Color3(0, 0, 0);
 
+		 var light1 = new BABYLON.HemisphericLight("light2", new BABYLON.Vector3(0, 1, 0), scene);
+		 light1.diffuse = new BABYLON.Color3(.5, .5, .5);
+		 light1.specular = new BABYLON.Color3(.5, .5, .5);
+		 light1.groundColor = new BABYLON.Color3(0, 0, 0);
+	 }
 
     // Create the ground plane that the maze sits on top of
     function createGround() {
-        var groundMat = new BABYLON.StandardMaterial("groundTex", scene);
+        var groundMat = new BABYLON.StandardMaterial("groundMat", scene);
         groundMat.diffuseColor = new BABYLON.Color3.FromInts(110, 82, 45);
 
         ground = BABYLON.Mesh.CreateGround('ground', mapSize, mapSize, 2, scene);
@@ -247,7 +262,7 @@ window.addEventListener('DOMContentLoaded', function () {
         var halfMap = mapSize / 2;  // Half the size of the map
         var sign = 1;               // Used to make an amount positive or negative
 
-        var perimMat = new BABYLON.StandardMaterial("perimTex", scene);
+        var perimMat = new BABYLON.StandardMaterial("perimMat", scene);
         perimMat.diffuseColor = new BABYLON.Color3.FromInts(70, 70, 70);
         perimMat.specularColor = new BABYLON.Color3.FromInts(70, 70, 70);
         perimMat.ambientColor = new BABYLON.Color3.FromInts(70, 70, 70);
@@ -270,23 +285,31 @@ window.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+	 function enableAndCheckCollisions() {
+		 // Add collision checks for the camera, ground, and walls
+		 scene.collisionsEnabled = true;
+		 camera.checkCollisions = true;
+		 ground.checkCollisions = true;
 
-    // Enable collision checks for environment meshes and the camera
-    function enableAndCheckCollisions() {
-        scene.collisionsEnabled = true;
-        camera.checkCollisions = true;
-        ground.checkCollisions = true;
-
-        // Loop through all walls and make them collidable
-        for (var i = 0; i < collidableObjects.length; i++) {
-            collidableObjects[i].checkCollisions = true;
-        }
-    }
+		 // Loop through all walls and make them collidable
+		 for (var i = 0; i < collidableObjects.length; i++) {
+			  collidableObjects[i].checkCollisions = true;
+		 }
+	 }
 
     // Run the render loop (fired every time a new frame is rendered)
     function animate() {
 
         engine.runRenderLoop(function () {
+            // Determine which camera should be showing depending on whether or not the headset is presenting
+            if(headset) {
+                if(!(headset.isPresenting)) {
+                      var camera2 = new BABYLON.UniversalCamera("Camera", new BABYLON.Vector3(0, 18, -45), scene);
+                      scene.activeCamera = camera2;
+                } else {
+                    scene.activeCamera = camera;
+                }
+            }
 
             scene.render();
 
@@ -308,7 +331,7 @@ window.addEventListener('DOMContentLoaded', function () {
                 if (dinoDistanceFromPlayer <= 0) {
                     caught();
                 }
-                // Player has moved out of chase range
+                // Player has moved out of chase range, hide distance counter UI
                 else {
                     // Decrement to keep speed consistent
                     dinoVelocity.z -= dinoVelocity.z * delta;
@@ -334,12 +357,15 @@ window.addEventListener('DOMContentLoaded', function () {
     }
 
     // Taking a distance, determines if the dino is close enough to the player to start chasing them.
-    // If too far away, that chase ends/doesn't start.
+    // If too far away, that chase ends/doesn't start and the distance counter UI is hidden.
     function beginChase(distanceAway) {
-        // Dino in chasing range, point dino is player direction
+        // Dino in chasing range, display the distance counter UI and point dino is player direction
         if (distanceAway < CHASERANGE) {
+            scene.fogColor = new BABYLON.Color3(.5, 0, 0);
             dino.lookAt(new BABYLON.Vector3(camera.position.x, dino.position.y, camera.position.z));
             // Dino not in chasing range, make sure distance counter is hidden
+        } else {
+            scene.fogColor = new BABYLON.Color3(0.9, 0.9, 0.85);
         }
     }
 
@@ -348,15 +374,12 @@ window.addEventListener('DOMContentLoaded', function () {
 
     // Updates the game state and begins the ending animations for the game
     function caught() {
-
+        scene.fogColor = new BABYLON.Color3(0, 0, 0);
         // Update game state
         gameOver = true;
 
-        // Disable player camera movement
-        camera.detachControl(canvas);
-        // Make player look at dino
-        camera.lockedTarget = new BABYLON.Vector3(dino.position.x, dino.position.y + (DINOSCALE / 2), dino.position.z)
-
+        // Disable all movement except head rotation
+        camera.inputs.removeByType("FreeCameraKeyboardMoveInput");
 
         // Every ROARDIVISOR frames make the dino roar
         if (frameCount % ROARDIVISOR == 0) {
@@ -422,7 +445,7 @@ window.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    // When the window resizes, adjust the engine size
+	 // When the window resizes, adjust the engine size
     function onWindowResize() {
         engine.resize();
     }
